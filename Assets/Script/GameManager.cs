@@ -7,12 +7,15 @@ public class GameManager : MonoBehaviour
     
     [Header("UI")]
     [SerializeField] private GameObject startText;
+    [SerializeField] private TMPro.TextMeshProUGUI scoreText;
+    [SerializeField] private GameObject gameOverText;
+    public int score;
     
     [Header("Game State")]
     public GameState currentState;
     
     [Header("Game Objects")]
-    [SerializeField] private SnakeHead snakeHead;
+    [SerializeField] private SnakeHead snakeHeadPrefab;
     [SerializeField] private Food food;
     
     
@@ -26,6 +29,21 @@ public class GameManager : MonoBehaviour
         Instance = this;
     }
 
+    void OnEnable()
+    {
+        SnakeHead.OnEat += UpdateScore;
+    }
+
+    void OnDisable()
+    {
+        SnakeHead.OnEat -= UpdateScore;
+    }
+
+    void UpdateScore()
+    {
+        scoreText.text = $"Score: {score}";
+    }
+
     void Start()
     {
         InitializeGame();
@@ -33,9 +51,39 @@ public class GameManager : MonoBehaviour
     
     void InitializeGame()
     {
+        // Clean up existing snake if it exists
+        if (SnakeHead.Instance != null)
+        {
+            Destroy(SnakeHead.Instance.gameObject);
+            SnakeHead.Instance = null;
+        }
+        
+        // Clean up any remaining body segments
+        GameObject[] bodySegments = GameObject.FindGameObjectsWithTag("BodySegment");
+        foreach (GameObject segment in bodySegments)
+        {
+            Destroy(segment);
+        }
+        
+        // Clean up any existing food
+        Food existingFood = FindObjectOfType<Food>();
+        if (existingFood != null)
+        {
+            Destroy(existingFood.gameObject);
+        }
+        
+        // Reset game state
+        score = 0;
+        scoreText.text = $"Score: {score}";
         currentState = GameState.Start;
-        Instantiate(snakeHead, Vector2.zero, Quaternion.identity);
+        Time.timeScale = 1f;
+        
+        // Hide UI elements
         startText.SetActive(true);
+        gameOverText.SetActive(false);
+        
+        // Create new snake
+        SnakeHead.Instance = Instantiate(snakeHeadPrefab, Vector2.zero, Quaternion.identity);
     }
     
     void Update()
@@ -44,26 +92,39 @@ public class GameManager : MonoBehaviour
         {
             case GameState.Start:
                 // Handle fisrt movement to start game
-                if (!snakeHead.isDead && snakeHead.isMoving)
+                if (SnakeHead.Instance.isMoving)
                 {
+                    Instantiate(food);
                     food.Spawn();
                     startText.SetActive(false);
                     currentState = GameState.Playing;
                 }
                 break;
             case GameState.Playing:
-                // Update game logic
-                if (snakeHead.isDead)
+                if (SnakeHead.Instance.isDead)
                 {
-                    snakeHead.isMoving = false;
+                    SnakeHead.Instance.isMoving = false;
                     currentState = GameState.GameOver;
+                    Time.timeScale = 0f;
+                    gameOverText.SetActive(true);
                 }
 
                 break;
             case GameState.GameOver:
                 // Show game over screen
+                Time.timeScale = 0f;
+                gameOverText.SetActive(true);
+                if (Input.anyKeyDown)
+                {
+                    RestartGame();
+                }
                 break;
         }
+    }
+    
+    void RestartGame()
+    {
+        InitializeGame();
     }
 }
 public enum GameState

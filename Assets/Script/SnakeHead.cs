@@ -1,34 +1,89 @@
+using System;
+using System.Collections.Generic;
+using Unity.VisualScripting;
 using UnityEngine;
+using System.Collections;
 
 public class SnakeHead : MonoBehaviour
 {
+    public static SnakeHead Instance;
     [Header("Movement")]
     [SerializeField] private float moveSpeed = 5f;
     [SerializeField] private float moveInterval = 0.2f;
+    [SerializeField] private float timer;
     
     [Header("Direction")]
     private Vector2 direction;
-
-    public bool isMoving = false;
     public bool isDead = false;
+    public bool isMoving = false;
+
+    [Header("Body")]
+    [SerializeField]private GameObject bodyPrefabs;
+    private List<Transform> bodySegment = new List<Transform>();
+
+    public static Action OnEat;
+
+    void Awake()
+    {
+        if (Instance != null)
+        {
+            Destroy(gameObject);
+            return;
+        }
+        Instance = this;
+    }
+
+    void OnEnable()
+    {
+        OnEat += Grow;
+    }
+
+    void OnDisable()
+    {
+        OnEat -= Grow;
+    }
 
     // Update is called once per frame
     void Update()
     {
-        HandleMovement();
+        timer += Time.deltaTime;
+
+        if (timer >= moveInterval)
+        {
+            Move();
+            timer = 0f;
+        }
         HandleInput();
     }
 
-    void HandleMovement()
+    void Move()
     {
-        transform.position += (Vector3)direction * moveSpeed * Time.deltaTime;
-        isMoving = true;
+        Vector2 newPosition = (Vector2)transform.position + direction;
+        
+        // Move body segments from back to front
+        for(int i = bodySegment.Count - 1; i > 0; i--)
+        {
+            bodySegment[i].position = bodySegment[i - 1].position;
+        }
+        
+        // Move first body segment to current head position
+        if(bodySegment.Count > 0)
+        {
+            bodySegment[0].position = transform.position;
+        }
+        
+        // Move head to new position
+        transform.position = newPosition;
+        
+        if(direction != Vector2.zero)
+        {
+            isMoving = true;
+        }
     }
 
     void HandleInput()
     {
-        Vector2 newDirection = direction;
-        
+        Vector2 newDirection;
         if (Input.GetKeyDown(KeyCode.UpArrow) || Input.GetKeyDown(KeyCode.W))
             newDirection = Vector2.up;
         else if (Input.GetKeyDown(KeyCode.DownArrow) || Input.GetKeyDown(KeyCode.S))
@@ -43,6 +98,45 @@ public class SnakeHead : MonoBehaviour
         if (newDirection != -direction)
         {
             direction = newDirection;
+        }
+    }
+
+    public void Grow()
+    {
+        GameObject body = Instantiate(bodyPrefabs, transform.position, Quaternion.identity);
+
+        Vector3 spawnPosition;
+
+        if (bodySegment.Count > 0)
+        {
+            Transform lastSegment = bodySegment[bodySegment.Count - 1];
+            spawnPosition = lastSegment.position;
+        }
+        else
+        {
+                spawnPosition = transform.position;
+        }
+        body.transform.position = spawnPosition;
+
+        Collider2D col = body.GetComponent<Collider2D>();
+        col.enabled = false;
+
+        StartCoroutine(EnableColliderLater(col));
+
+        bodySegment.Add(body.transform);
+    }
+    
+    IEnumerator EnableColliderLater(Collider2D col)
+    {
+        yield return new WaitForSeconds(1f);
+        col.enabled = true;
+    }
+
+    void OnTriggerEnter2D(Collider2D collision)
+    {
+        if (collision.CompareTag("Walls") || collision.CompareTag("BodySegment"))
+        {
+            isDead = true;
         }
     }
 }

@@ -6,8 +6,8 @@ public class Food : MonoBehaviour
     {
         //Spawn food at random position
         Vector2 randomPosition = new Vector2(
-            Random.Range(-GameManager.Instance.gridManager.width / 2, GameManager.Instance.gridManager.width / 2),
-            Random.Range(-GameManager.Instance.gridManager.height / 2, GameManager.Instance.gridManager.height / 2)
+            Random.Range(-GameManager.Instance.gridManager.width / 2 + 1, GameManager.Instance.gridManager.width / 2),
+            Random.Range(-GameManager.Instance.gridManager.height / 2 + 1, GameManager.Instance.gridManager.height / 2)
         );
         transform.position = randomPosition;
     }
@@ -16,6 +16,8 @@ public class Food : MonoBehaviour
     {
         if (collision.CompareTag("Player"))
         {
+            GameManager.Instance.score += 100;
+            SnakeHead.OnEat?.Invoke();
             Spawn();
         }
     }
