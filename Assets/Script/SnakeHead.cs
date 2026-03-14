@@ -10,6 +10,12 @@ public class SnakeHead : MonoBehaviour
     [Header("Movement")]
     [SerializeField] private float moveSpeed = 5f;
     [SerializeField] private float moveInterval = 0.2f;
+    public float MoveInterval
+    {
+        get => moveInterval;
+        set => moveInterval = value;
+    }
+
     [SerializeField] private float timer;
     
     [Header("Direction")]
@@ -32,20 +38,10 @@ public class SnakeHead : MonoBehaviour
         }
         Instance = this;
     }
-
-    void OnEnable()
-    {
-        OnEat += Grow;
-    }
-
-    void OnDisable()
-    {
-        OnEat -= Grow;
-    }
-
     // Update is called once per frame
     void Update()
     {
+        if(isDead) return;
         timer += Time.deltaTime;
 
         if (timer >= moveInterval)
@@ -58,6 +54,13 @@ public class SnakeHead : MonoBehaviour
 
     void Move()
     {
+        if(direction == Vector2.zero) 
+        return;
+
+        if(direction != Vector2.zero)
+        {
+            isMoving = true;
+        }
         Vector2 newPosition = (Vector2)transform.position + direction;
         
         // Move body segments from back to front
@@ -74,11 +77,6 @@ public class SnakeHead : MonoBehaviour
         
         // Move head to new position
         transform.position = newPosition;
-        
-        if(direction != Vector2.zero)
-        {
-            isMoving = true;
-        }
     }
 
     void HandleInput()
@@ -134,9 +132,22 @@ public class SnakeHead : MonoBehaviour
 
     void OnTriggerEnter2D(Collider2D collision)
     {
+        Food food = collision.GetComponent<Food>();
+
+        if(food != null)
+        {
+            food.OnEat(this);
+            OnEat?.Invoke();  
+        }
+
         if (collision.CompareTag("Walls") || collision.CompareTag("BodySegment"))
         {
-            isDead = true;
+            Die();
         }
+    }
+
+    public void Die()
+    {
+        isDead = true;
     }
 }

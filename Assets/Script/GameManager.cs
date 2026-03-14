@@ -1,13 +1,15 @@
 using UnityEngine;
+using TMPro;
 
 public class GameManager : MonoBehaviour
 {
     public static GameManager Instance;
     public GridSystemManager gridManager;
+    public FoodSpawner foodSpawner;
     
     [Header("UI")]
     [SerializeField] private GameObject startText;
-    [SerializeField] private TMPro.TextMeshProUGUI scoreText;
+    [SerializeField] private TextMeshProUGUI scoreText;
     [SerializeField] private GameObject gameOverText;
     public int score;
     
@@ -16,7 +18,6 @@ public class GameManager : MonoBehaviour
     
     [Header("Game Objects")]
     [SerializeField] private SnakeHead snakeHeadPrefab;
-    [SerializeField] private Food food;
     
     
     void Awake()
@@ -32,16 +33,22 @@ public class GameManager : MonoBehaviour
     void OnEnable()
     {
         SnakeHead.OnEat += UpdateScore;
+        SnakeHead.OnEat += foodSpawner.SpawnFood;
     }
 
     void OnDisable()
     {
         SnakeHead.OnEat -= UpdateScore;
+        SnakeHead.OnEat -= foodSpawner.SpawnFood;
     }
 
     void UpdateScore()
     {
         scoreText.text = $"Score: {score}";
+    }
+    public void AddScore(int value)
+    {
+        score += value;
     }
 
     void Start()
@@ -51,26 +58,9 @@ public class GameManager : MonoBehaviour
     
     void InitializeGame()
     {
-        // Clean up existing snake if it exists
-        if (SnakeHead.Instance != null)
-        {
-            Destroy(SnakeHead.Instance.gameObject);
-            SnakeHead.Instance = null;
-        }
-        
-        // Clean up any remaining body segments
-        GameObject[] bodySegments = GameObject.FindGameObjectsWithTag("BodySegment");
-        foreach (GameObject segment in bodySegments)
-        {
-            Destroy(segment);
-        }
-        
-        // Clean up any existing food
-        Food existingFood = FindObjectOfType<Food>();
-        if (existingFood != null)
-        {
-            Destroy(existingFood.gameObject);
-        }
+        CleanUpScene();
+
+        foodSpawner.ResetFoods();
         
         // Reset game state
         score = 0;
@@ -94,8 +84,7 @@ public class GameManager : MonoBehaviour
                 // Handle fisrt movement to start game
                 if (SnakeHead.Instance.isMoving)
                 {
-                    Instantiate(food);
-                    food.Spawn();
+                    foodSpawner.SpawnFood();
                     startText.SetActive(false);
                     currentState = GameState.Playing;
                 }
@@ -125,6 +114,23 @@ public class GameManager : MonoBehaviour
     void RestartGame()
     {
         InitializeGame();
+    }
+
+    void CleanUpScene()
+    {
+        // Clean up existing snake if it exists
+        if (SnakeHead.Instance != null)
+        {
+            Destroy(SnakeHead.Instance.gameObject);
+            SnakeHead.Instance = null;
+        }
+        
+        // Clean up any remaining body segments
+        GameObject[] bodySegments = GameObject.FindGameObjectsWithTag("BodySegment");
+        foreach (GameObject segment in bodySegments)
+        {
+            Destroy(segment);
+        }
     }
 }
 public enum GameState
